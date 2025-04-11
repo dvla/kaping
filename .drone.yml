@@ -1,0 +1,122 @@
+---
+kind: pipeline
+name: audit, lint & test
+
+platform:
+  os: linux
+  arch: amd64
+
+trigger:
+  event:
+    - push
+
+drone_cache_image: &drone_cache_image
+  image: 448934085854.dkr.ecr.eu-west-2.amazonaws.com/ce/drone-cache
+  pull: if-not-exists
+
+drone_cache_settings: &drone_cache_settings
+  bucket: dvla-drone1-cache-448934085854
+  region: eu-west-2
+  encryption: AES256
+  endpoint: https://s3.eu-west-2.amazonaws.com
+
+gem_cache_mount: &gem_cache_mount
+  mount:
+    - vendor/bundle
+
+ruby_image: &ruby_image
+  image: 448934085854.dkr.ecr.eu-west-2.amazonaws.com/base-images/qe-ruby:3
+
+sonar_image: &sonar_image
+  image: 448934085854.dkr.ecr.eu-west-2.amazonaws.com/utilities-ci-tools/ci-drone-sonar-scanner
+  pull: if-not-exists
+
+steps:
+  - name: Restore gems from cache
+    <<: *drone_cache_image
+    settings:
+      <<: *drone_cache_settings
+      <<: *gem_cache_mount
+      restore: true
+      cache_key: '{{ checksum "./README.md" }}' # Override the README to force a rebuild
+
+  - name: Unit tests
+    <<: *ruby_image
+    depends_on:
+      - Restore gems from cache
+    commands:
+      - bundle install
+      - bundle exec rspec
+    environment:
+      BUNDLE_PATH: vendor/bundle
+
+  - name: Gem audit
+    <<: *ruby_image
+    depends_on:
+      - Restore gems from cache
+    commands:
+      - bundle install
+      - bundle exec bundle-audit
+    environment:
+      BUNDLE_PATH: vendor/bundle
+
+  - name: Lint
+    <<: *ruby_image
+    depends_on:
+      - Restore gems from cache
+    commands:
+      - bundle install
+      - bundle exec rubocop
+    environment:
+      BUNDLE_PATH: vendor/bundle
+
+  - name: SonarQube
+    <<: *sonar_image
+    depends_on:
+      - Unit tests
+
+  - name: Build and deploy (dry-run)
+    image: 448934085854.dkr.ecr.eu-west-2.amazonaws.com/utilities-ci-tools/ci-qe-deploy-gem:latest
+    commands:
+      - git fetch origin main
+      - app
+    environment:
+      DRYRUN: true
+      VERBOSE: false
+
+  - name: Rebuild gem cache
+    <<: *drone_cache_image
+    depends_on:
+      - Gem audit
+    settings:
+      <<: *drone_cache_settings
+      <<: *gem_cache_mount
+      rebuild: true
+      cache_key: '{{ checksum "./README.md" }}'
+
+---
+kind: pipeline
+name: deploy
+depends_on:
+  - audit, lint & test
+
+platform:
+  os: linux
+  arch: amd64
+
+trigger:
+  event:
+    - push
+  branch:
+    - main
+
+steps:
+  - name: Build and deploy
+    image: 448934085854.dkr.ecr.eu-west-2.amazonaws.com/utilities-ci-tools/ci-qe-deploy-gem:latest
+    commands:
+      - git fetch origin main
+      - app
+    environment:
+      DRYRUN: false
+      VERBOSE: false
+

@@ -1,0 +1,11 @@
+inherit_gem:
+  dvla-lint: ".rubocop.yml"
+
+AllCops:
+  TargetRubyVersion: 3.0
+
+Style/StringLiterals:
+  EnforcedStyle: single_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: single_quotes

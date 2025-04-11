@@ -1,0 +1,21 @@
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+/.idea/
+.idea
+*/.idea
+
+# rspec failure tracking
+.rspec_status
+/.gem
+
+# we are writing a gem so this Gemfile.lock should be ignored
+Gemfile.lock
+
+coverage
+out

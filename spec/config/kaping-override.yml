@@ -1,0 +1,4 @@
+kaping_host: <%= ENV['KAPING_HOST'] || 'override_host' %>
+kaping_index: <%= ENV['KAPING_INDEX'] || 'override_index'  %>
+kaping_result_size: <%= ENV['KAPING_RESULT_SIZE'] || '100'  %>
+kaping_log_level: <%= ENV['KAPING_LOG_LEVEL'] || :test %>
