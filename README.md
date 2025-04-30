@@ -55,8 +55,8 @@ DVLA::Kaping.configure { |attr| attr.yaml_override_path = './config/kaping.yml' 
 ```
 The 'index' setting will control what environment to target
 
-The 'result_size' setting determines how many records to be returned from the query, if you are doing a post query filtering 
-code side then you should pump this value up.
+The 'result_size' setting determines how many records to be returned from the query, if you are doing a post-query filtering 
+code side, then you should pump this value up.
 
 ```yml
 kaping:
@@ -73,7 +73,7 @@ Profile will just pick up the credentials save in your specified shared credenti
 
 ```yml
   aws:
-    #  to use a AWS profile config file then set to profile, otherwise environment settings will be used
+    #  to use an AWS profile config file then set to profile, otherwise environment settings will be used
     credential_type: profile
     account_id: ##########
     region: aws-region
@@ -106,7 +106,7 @@ body = DVLA::Kaping::Query.new('bool')
 ## Query building
 A query can be built up with dot notation, but there are a few rules to follow. 
 
-First get a new Kaping Query instance. If we want a new Boolean query then we set the type as bool. 
+First, get a new Kaping Query instance. If we want a new Boolean query then we set the type as bool. 
 ```ruby
 my_query = DVLA::Kaping::Query.new('bool')
 my_query.filter.term('foo.bar', 'Valid').
