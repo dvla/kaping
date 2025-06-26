@@ -2,6 +2,13 @@
 
 The Kaping! gem - an idiomatic way to create DSL openSearch definitions
 
+The Ka-Ping Ruby gem enables the user to build complex ElasticSearch DSL Queries for searching and filtering large data sets
+without having to worry about formatting the JSON payloads. 
+
+Using Ruby dot notation with intuitive search terms and operations, it's easier to construct human-readable search definitions 
+without needing a deep understanding of the Query DSL syntax
+
+
 ## OpenSearch Query DSL
 https://opensearch.org/docs/latest/query-dsl/
 
