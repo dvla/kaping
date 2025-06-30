@@ -8,6 +8,7 @@
 /tmp/
 /.idea/
 .idea
+.drone.yml
 */.idea
 
 # rspec failure tracking
