@@ -1,6 +1,6 @@
 # Dvla::Kaping
 
-The Kaping! gem - an idiomatic way to create DSL openSearch definitions
+The Kaping! Gem, an idiomatic way to create DSL openSearch definitions
 
 The Ka-Ping Ruby gem enables the user to build complex ElasticSearch DSL Queries for searching and filtering large data sets
 without having to worry about formatting the JSON payloads. 
@@ -35,10 +35,10 @@ complex to construct so this gem looks to simplify the process.
 
 ## Query and filter context
 
-A filter context asks - “Does the document match the query clause?” and returns matching documents 
+A filter context asks: “Does the document match the query clause?” and returns matching documents 
 i.e it's a binary answer
 
-A query context asks - “How well does the document match the query clause?”, - also returns a relevance score
+A query context asks: “How well does the document match the query clause?”, - also returns a relevance score
 good for full-text searches
 
 # How to use

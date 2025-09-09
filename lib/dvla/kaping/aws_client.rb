@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'aws-sdk-core'
 require 'opensearch-aws-sigv4'
 require 'aws-sigv4'
+require 'aws-sdk-sts'
 
 module DVLA
   module Kaping
