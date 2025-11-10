@@ -37,5 +37,4 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'aws-sigv4', '~> 1.8'
   spec.add_dependency 'nokogiri', '~> 1.18', '>= 1.18.8'
   spec.add_dependency 'opensearch-aws-sigv4', '~> 1.2', '>= 1.2.1'
-
 end
