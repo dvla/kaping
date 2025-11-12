@@ -8,3 +8,7 @@
 
 - Moved runtime dependencies to the gemspec
 
+## [1.0.4] - 2025-11-10
+
+- Update gems and fixed issue with git actions
+
