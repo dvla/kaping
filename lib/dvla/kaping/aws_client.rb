@@ -11,25 +11,34 @@ module DVLA
         @base_url = Kaping.yaml[:kaping_host]
         @aws_account_id = Kaping.yaml.dig(:aws, :account_id)
         @role = Kaping.yaml.dig(:aws, :role)
-        @region = Kaping.yaml.dig(:aws, :region)
-        Kaping.logger.info { "Kaping Client | base_url: '#{@base_url}'" }
+        @region = Kaping.yaml.dig(:aws, :region) || 'eu-west-2'
+        Kaping.logger.debug { "AWS Client | base_url: '#{@base_url}'" }
+      end
+
+      def select_credentials
+        case Kaping.yaml.dig(:aws, :credential_type)
+        when 'profile'
+          assume_role_profile(@aws_account_id, @role)
+        when 'env'
+          assume_role_env(@aws_account_id, @role)
+        when 'credentials'
+          Aws::CredentialProviderChain.new.resolve
+        else
+          logger.warn { 'Credential type not recognised, please set an option: profile, env or credentials' }
+        end
       end
 
       def connect
-        credentials = if Kaping.yaml.dig(:aws, :credential_type) == 'profile'
-                        assume_role_profile(@aws_account_id, @role)
-                      else
-                        assume_role_env(@aws_account_id, @role)
-                      end
+        credentials = select_credentials
 
         signer = Aws::Sigv4::Signer.new(service: 'es',
                                         region: @region,
                                         credentials_provider: credentials)
 
         OpenSearch::Aws::Sigv4Client.new({
-                                      host: @base_url,
-                                      log: false,
-                                    }, signer)
+                                           host: @base_url,
+                                           log: false,
+                                         }, signer)
       end
 
     private
@@ -38,7 +47,9 @@ module DVLA
       def assume_role_profile(aws_account_id, role)
         role_arn = "arn:aws:iam::#{aws_account_id}:role/#{role}"
         sts = Aws::STS::Client.new(region: @region, profile: Kaping.yaml.dig(:aws, :profile))
-        sts.assume_role(role_arn: role_arn, role_session_name: 'kaping')
+        resp = sts.assume_role(role_arn: role_arn, role_session_name: 'kaping')
+        Aws::Credentials.new(resp.credentials.access_key_id, resp.credentials.secret_access_key,
+                             resp.credentials.session_token)
       rescue Aws::STS::Errors::ServiceError => e
         raise "#{__method__}: AWS Profile Credentials Issue: #{e.message}  #{e.class.name}"
       end
@@ -47,7 +58,9 @@ module DVLA
       def assume_role_env(aws_account_id, role)
         role_arn = "arn:aws:iam::#{aws_account_id}:role/#{role}"
         sts = Aws::STS::Client.new(region: @region)
-        sts.assume_role(role_arn: role_arn, role_session_name: 'kaping')
+        resp = sts.assume_role(role_arn: role_arn, role_session_name: 'kaping')
+        Aws::Credentials.new(resp.credentials.access_key_id, resp.credentials.secret_access_key,
+                             resp.credentials.session_token)
       rescue Aws::STS::Errors::ServiceError => e
         raise "#{__method__}: AWS ENV Credentials Issue: #{e.message}  #{e.class.name}"
       end

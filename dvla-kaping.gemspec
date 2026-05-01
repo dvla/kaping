@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'Idiomatic way to create DSL openSearch definitions'
   spec.description = 'Wrapper for the AWS elastic search API to create an idiomatic way to build complex search queries'
   spec.homepage = 'https://github.com/dvla/kaping'
-  spec.required_ruby_version = '>= 3'
+  spec.required_ruby_version = '>= 4'
   spec.license = 'MIT'
 
   spec.metadata['homepage_uri'] = spec.homepage
@@ -34,7 +34,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = %w[lib]
 
   spec.add_dependency 'aws-sdk-sts', '~> 1.12'
-  spec.add_dependency 'aws-sigv4', '~> 1.8'
-  spec.add_dependency 'nokogiri', '~> 1.18', '>= 1.18.8'
-  spec.add_dependency 'opensearch-aws-sigv4', '~> 1.2', '>= 1.2.1'
+  spec.add_dependency 'aws-sigv4', '~> 1.12'
+  spec.add_dependency 'nokogiri', '~> 1.19'
+  spec.add_dependency 'opensearch-aws-sigv4', '~> 1.3'
 end

@@ -74,18 +74,52 @@ kaping:
 
 ```
 If you want to use the built-in client, and your OpenSearch instance is hosted in a Amazon VPC you will need to assume AWS permissions for access to run the queries.
-there are two options, you can either use profile or environment
+There are two options, you can either use profile or environment
 
-Profile will just pick up the credentials save in your specified shared credentials ini file at ~/.aws/credentials, 
+Profile will just pick up the credentials saved in your specified shared credentials ini file at ~/.aws/credentials, 
 
 ```yml
   aws:
-    #  to use an AWS profile config file then set to profile, otherwise environment settings will be used
-    credential_type: profile
+    #  to use an AWS profile config file, then set to profile, otherwise environment settings will be used
+    credential_type: profile | env | credentials
     account_id: ##########
+    role: ROLE 
     region: aws-region
     profile: PROFILE
-    role: ROLE  
+     
+```
+
+### AWS Credential Chain
+
+The gem supports three credential strategies:
+
+| credential_type | How it works |
+|---|---|
+| `profile` | Uses the named profile from `~/.aws/config` to create an STS client, then assumes the configured role. Supports SSO profiles. |
+| `env` | Uses environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or `AWS_PROFILE`) to create an STS client, then assumes the configured role. |
+| `credentials` | Delegates to the AWS SDK default credential provider chain, which walks through env vars → shared config/credentials → SSO → ECS/EC2 instance roles in order. No role assumption is performed. |
+
+### Using AWS SSO
+
+If your organisation uses AWS IAM Identity Center (SSO), authenticate first then set the profile:
+
+```bash
+aws sso login --profile my-sso-profile
+```
+
+Then either:
+- Set `credential_type: profile` and `profile: my-sso-profile` in your `kaping.yml`
+- Or set `credential_type: env` / `credentials` and export `AWS_PROFILE=my-sso-profile`
+
+The SDK will resolve the cached SSO token automatically. Ensure your `~/.aws/config` has the SSO profile configured, for example:
+
+```ini
+[profile my-sso-profile]
+sso_start_url = https://my-org.awsapps.com/start
+sso_region = eu-west-2
+sso_account_id = 123456789012
+sso_role_name = MyRole
+region = eu-west-2
 ```
 
 ## Client
