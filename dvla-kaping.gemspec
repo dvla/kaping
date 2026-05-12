@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
   spec.summary = 'Idiomatic way to create DSL openSearch definitions'
   spec.description = 'Wrapper for the AWS elastic search API to create an idiomatic way to build complex search queries'
   spec.homepage = 'https://github.com/dvla/kaping'
-  spec.required_ruby_version = '>= 4'
+  spec.required_ruby_version = '>= 3.4'
   spec.license = 'MIT'
 
   spec.metadata['homepage_uri'] = spec.homepage
