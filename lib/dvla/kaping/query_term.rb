@@ -23,9 +23,17 @@ module DVLA
         self
       end
 
-      def exists(field, value)
+      # Checks that a field exists. Per the OpenSearch `exists` query the shape
+      # is { "exists": { "field": "<name>" } }.
+      #
+      #   q.must_not.exists('drivingLicence.migrationErrors')
+      #
+      # The legacy two-argument form exists('field', '<name>') is still accepted
+      # for backward compatibility and reproduces its original output.
+      def exists(field, value = nil)
+        clause = value.nil? ? { field: field } : { "#{field}": value }
         current_operation << {
-          exists: { "#{field}": value },
+          exists: clause,
         }
         self
       end
@@ -72,6 +80,51 @@ module DVLA
         current_operation << {
           range: { "#{field}": fragment },
         }
+        self
+      end
+
+      # Wrap one or more conditions in a nested query, for fields mapped as the
+      # OpenSearch `nested` type. See
+      # https://docs.opensearch.org/latest/query-dsl/joining/nested/
+      #
+      # The block yields an inner builder. Conditions added via `must` (the
+      # default context) are combined so they must all match the SAME nested
+      # object. The inner builder also supports `should`/`must_not`/`filter`
+      # for more complex nested conditions (e.g. "any of these codes").
+      #
+      #   q.must.nested('entitlement') { |n| n.match_phrase('entitlement.categoryStatus', 'Valid') }
+      #
+      #   q.must.nested('entitlement') do |n|
+      #     n.match_phrase('entitlement.categoryStatus', 'Valid')
+      #     n.should.
+      #       match_phrase('entitlement.categoryCode', 'C').
+      #       match_phrase('entitlement.categoryCode', 'D')
+      #   end
+      #
+      # Optional OpenSearch parameters (score_mode, ignore_unmapped, inner_hits)
+      # may be passed as keyword arguments and are included only when provided.
+      def nested(path, score_mode: nil, ignore_unmapped: nil, inner_hits: nil)
+        raise ArgumentError, 'nested requires a block to build the inner query' unless block_given?
+
+        inner = DVLA::Kaping::Query.new('bool')
+        yield inner.must
+        inner_ops = inner.send(:operations).reject { |_op, clauses| clauses.respond_to?(:empty?) && clauses.empty? }
+
+        raise ArgumentError, 'nested block produced no conditions' if inner_ops.empty?
+
+        inner_query =
+          if inner_ops.keys == [:must] && inner_ops[:must].size == 1
+            inner_ops[:must].first
+          else
+            { bool: inner_ops }
+          end
+
+        clause = { path: path, query: inner_query }
+        clause[:score_mode] = score_mode unless score_mode.nil?
+        clause[:ignore_unmapped] = ignore_unmapped unless ignore_unmapped.nil?
+        clause[:inner_hits] = inner_hits unless inner_hits.nil?
+
+        current_operation << { nested: clause }
         self
       end
 

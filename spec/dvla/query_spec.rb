@@ -71,6 +71,13 @@ RSpec.describe DVLA::Kaping::Query do
       expect(q.to_json).to eq(test_query)
     end
 
+    it 'query term exists with a single field name' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must_not.exists('drivingLicence.migrationErrors')
+      test_query = '{"query":{"bool":{"must_not":[{"exists":{"field":"drivingLicence.migrationErrors"}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
     it 'query term wildcard' do
       q = DVLA::Kaping::Query.new('bool')
       q.must.wildcard('bar.type', 'Full*')
@@ -171,6 +178,71 @@ RSpec.describe DVLA::Kaping::Query do
       q.should.match_phrase('foo.type', 'bar soup baz bing', minimum_should_match: 1)
       test_query = '{"query":{"bool":{"should":[{"match_phrase":{"foo.type":"bar soup baz bing"}}],"minimum_should_match":1}}}'
       expect(q.to_json).to eq(test_query)
+    end
+
+    # https://docs.opensearch.org/latest/query-dsl/joining/nested/
+    it 'nested query with a single condition' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must.nested('entitlement') { |n| n.match_phrase('entitlement.categoryStatus', 'Valid') }
+      test_query = '{"query":{"bool":{"must":[{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryStatus":"Valid"}}}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query with multiple conditions matching the same object' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must.nested('entitlement') do |n|
+        n.match_phrase('entitlement.categoryCode', 'C').
+          match_phrase('entitlement.categoryStatus', 'Valid')
+      end
+      test_query = '{"query":{"bool":{"must":[{"nested":{"path":"entitlement","query":{"bool":{"must":[{"match_phrase":{"entitlement.categoryCode":"C"}},{"match_phrase":{"entitlement.categoryStatus":"Valid"}}]}}}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query used as a must_not exclusion' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must_not.nested('entitlement') { |n| n.match_phrase('entitlement.categoryCode', 'D') }
+      test_query = '{"query":{"bool":{"must_not":[{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryCode":"D"}}}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query chaining multiple nested clauses' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must_not.
+        nested('entitlement') { |n| n.match_phrase('entitlement.categoryCode', 'C') }.
+        nested('entitlement') { |n| n.match_phrase('entitlement.categoryCode', 'D') }
+      test_query = '{"query":{"bool":{"must_not":[{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryCode":"C"}}}},{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryCode":"D"}}}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query with optional parameters' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must.nested('entitlement', score_mode: 'max', ignore_unmapped: true) do |n|
+        n.match_phrase('entitlement.categoryStatus', 'Valid')
+      end
+      test_query = '{"query":{"bool":{"must":[{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryStatus":"Valid"}},"score_mode":"max","ignore_unmapped":true}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query with an inner should (any-of) alongside a must' do
+      q = DVLA::Kaping::Query.new('bool')
+      q.must.nested('entitlement') do |n|
+        n.match_phrase('entitlement.categoryStatus', 'Valid')
+        n.should.
+          match_phrase('entitlement.categoryCode', 'C').
+          match_phrase('entitlement.categoryCode', 'D')
+      end
+      test_query = '{"query":{"bool":{"must":[{"nested":{"path":"entitlement","query":{"bool":{"must":[{"match_phrase":{"entitlement.categoryStatus":"Valid"}}],"should":[{"match_phrase":{"entitlement.categoryCode":"C"}},{"match_phrase":{"entitlement.categoryCode":"D"}}]}}}}]}}}'
+      expect(q.to_json).to eq(test_query)
+    end
+
+    it 'nested query raises without a block' do
+      q = DVLA::Kaping::Query.new('bool')
+      expect { q.must.nested('entitlement') }.to raise_error(ArgumentError)
+    end
+
+    it 'nested query raises when the block produces no conditions' do
+      q = DVLA::Kaping::Query.new('bool')
+      expect { q.must.nested('entitlement') { |_n| } }.to raise_error(ArgumentError) # rubocop:disable Lint/EmptyBlock
     end
   end
 end
