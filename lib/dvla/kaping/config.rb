@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'erb'
 require 'yaml'
+require 'logger'
 require 'active_support/core_ext/hash/deep_merge'
 
 
@@ -13,20 +15,39 @@ module DVLA
       ATTRIBUTES = %w[host index result_size log_level].freeze
       attr_accessor(*ATTRIBUTES)
 
+      # Maps the configured log level (symbol/string) to a Logger severity.
+      LOG_LEVELS = {
+        'debug' => Logger::DEBUG,
+        'info' => Logger::INFO,
+        'warn' => Logger::WARN,
+        'error' => Logger::ERROR,
+        'fatal' => Logger::FATAL,
+        'unknown' => Logger::UNKNOWN,
+      }.freeze
+
       def initialize
         @yaml = load_yaml(Dir["#{Dir.pwd}/**/kaping.yml"].first)
 
+        # Allow KAPING_* environment variables to override the loaded values,
+        # but only when the variable is actually set.
         ATTRIBUTES.each do |attr|
-          instance_variable_set(:"@#{attr}", ENV.fetch(attr.to_s.upcase, nil))
+          env_value = ENV.fetch("KAPING_#{attr.upcase}", nil)
+          instance_variable_set(:"@#{attr}", env_value) unless env_value.nil?
         end
 
-        @logger = Logger.new($stdout)
-        @log_level ||= 'INFO'
         @result_size ||= 100
+
+        @logger = Logger.new($stdout)
+        @logger.level = resolved_log_severity
       end
 
       #   step 1 - find kaping.yml
       def load_yaml(path)
+        if path.nil?
+          warn('[WARN] No kaping.yml found')
+          return nil
+        end
+
         path = "#{path}.yml" unless %w[.yaml .yml].include?(File.extname(path))
 
         if File.exist?(path)
@@ -54,14 +75,24 @@ module DVLA
       def logger=(new_logger)
         if new_logger.is_a?(Logger)
           @logger = new_logger
-          @logger.level = @yaml[kaping_log_level]
+          @logger.level = resolved_log_severity
         else
           warn("[WARN] Custom logger is not an instance of Logger: '#{new_logger.class}'")
         end
       end
 
-      def log_level(_log_level = @yaml.dig(:kaping, :log_level))
-        @log
+      # The configured log level. Precedence: KAPING_LOG_LEVEL env var (captured
+      # into @log_level during initialize) > the loaded YAML > 'INFO'.
+      def log_level
+        @log_level || (@yaml && @yaml[:kaping_log_level]) || 'INFO'
+      end
+
+    private
+
+      # The configured log level mapped to a Logger severity, defaulting to INFO
+      # for anything not recognised.
+      def resolved_log_severity
+        LOG_LEVELS.fetch(log_level.to_s.downcase, Logger::INFO)
       end
     end
   end

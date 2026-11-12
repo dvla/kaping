@@ -5,11 +5,8 @@ module DVLA
     class Query
       include QueryTerm
 
-      BOOL = 'bool'.freeze
-      MATCH = 'match'.freeze
-
       attr_reader :query_type, :kwargs
-      protected attr_reader :operations, :parameters
+      protected attr_reader :operations
       protected attr_accessor :last_operation
 
       def initialize(type, **kwargs)

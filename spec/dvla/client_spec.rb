@@ -26,6 +26,31 @@ RSpec.describe DVLA::Kaping::AWSClient do
     expect { stub.connect }.to raise_error(an_instance_of(RuntimeError).and(having_attributes(message: error)))
   end
 
+  context '#select_credentials' do
+    it 'raises a clear error for an unrecognised credential_type' do
+      allow(DVLA::Kaping).to receive(:yaml).and_return({ aws: { credential_type: 'bogus' } })
+      client = DVLA::Kaping::AWSClient.new
+      expect { client.select_credentials }
+        .to raise_error(ArgumentError, /Unrecognised aws.credential_type: "bogus"/)
+    end
+
+    it 'resolves credentials via the default chain for the credentials type' do
+      allow(DVLA::Kaping).to receive(:yaml).and_return({ aws: { credential_type: 'credentials' } })
+      expect_any_instance_of(Aws::CredentialProviderChain).to receive(:resolve).and_return(:creds)
+      client = DVLA::Kaping::AWSClient.new
+      expect(client.select_credentials).to eq(:creds)
+    end
+  end
+
+  context '#connect credential guard' do
+    it 'raises a clear error when credentials cannot be resolved' do
+      allow(DVLA::Kaping).to receive(:yaml).and_return({ aws: { credential_type: 'credentials' } })
+      allow_any_instance_of(Aws::CredentialProviderChain).to receive(:resolve).and_return(nil)
+      client = DVLA::Kaping::AWSClient.new
+      expect { client.connect }.to raise_error(/Unable to resolve AWS credentials/)
+    end
+  end
+
 
   # it 'initializes with correct config settings' do
   #   client = DVLA::Kaping::AWSClient.new

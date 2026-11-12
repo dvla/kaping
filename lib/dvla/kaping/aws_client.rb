@@ -16,7 +16,8 @@ module DVLA
       end
 
       def select_credentials
-        case Kaping.yaml.dig(:aws, :credential_type)
+        credential_type = Kaping.yaml.dig(:aws, :credential_type)
+        case credential_type
         when 'profile'
           assume_role_profile(@aws_account_id, @role)
         when 'env'
@@ -24,12 +25,19 @@ module DVLA
         when 'credentials'
           Aws::CredentialProviderChain.new.resolve
         else
-          logger.warn { 'Credential type not recognised, please set an option: profile, env or credentials' }
+          raise ArgumentError,
+                "Unrecognised aws.credential_type: #{credential_type.inspect}. " \
+                'Set one of: profile, env or credentials'
         end
       end
 
       def connect
         credentials = select_credentials
+
+        if credentials.nil?
+          raise 'Unable to resolve AWS credentials. Check your credential_type and that a ' \
+                'profile/SSO session or environment credentials are available.'
+        end
 
         signer = Aws::Sigv4::Signer.new(service: 'es',
                                         region: @region,

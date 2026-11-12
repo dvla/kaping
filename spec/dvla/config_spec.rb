@@ -29,9 +29,32 @@ RSpec.describe DVLA::Kaping::Config do
     expect(config.yaml[:kaping_index]).to eq('override_index')
   end
 
-  it 'should be able to set logging level' do
-    log_level = config.log_level
-    expect(config.yaml[:kaping_level]).to eq(log_level)
+  it 'should return the configured log level from the yaml' do
+    expect(config.log_level).to eq('debug')
+  end
+
+  it 'should apply the configured log level to the default logger' do
+    expect(config.logger.level).to eq(Logger::DEBUG)
+  end
+
+  it 'should let KAPING_LOG_LEVEL override the yaml log level' do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('KAPING_LOG_LEVEL', nil).and_return('warn')
+    expect(config.log_level).to eq('warn')
+    expect(config.logger.level).to eq(Logger::WARN)
+  end
+
+  it 'should fall back to INFO for an unrecognised level' do
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('KAPING_LOG_LEVEL', nil).and_return('verbose')
+    expect(config.logger.level).to eq(Logger::INFO)
+  end
+
+  it 'should set the logger severity from the configured log level' do
+    custom = Logger.new($stdout)
+    config.logger = custom
+    expect(config.logger).to be(custom)
+    expect(config.logger.level).to eq(Logger::DEBUG)
   end
 
   it 'should be a Logger' do

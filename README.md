@@ -181,6 +181,62 @@ structure of the query from the ruby objects.
 my_json_query = my_query.to_json
 ```
 
+## Checking a field exists
+
+Use `exists` with the field name to require (or, under `must_not`, exclude)
+documents where a field is present:
+
+```ruby
+q = DVLA::Kaping::Query.new('bool')
+q.must_not.exists('drivingLicence.migrationErrors')
+
+#  q.to_json will produce
+'{"query":{"bool":{"must_not":[{"exists":{"field":"drivingLicence.migrationErrors"}}]}}}'
+```
+
+## Nested queries
+
+For fields mapped as the OpenSearch [`nested`](https://docs.opensearch.org/latest/query-dsl/joining/nested/)
+type, a flat `match_phrase` will not match. Use `nested`, passing the path and a
+block that builds the inner conditions.
+
+```ruby
+q = DVLA::Kaping::Query.new('bool')
+q.must.nested('entitlement') { |n| n.match_phrase('entitlement.categoryStatus', 'Valid') }
+
+#  q.to_json will produce
+'{"query":{"bool":{"must":[{"nested":{"path":"entitlement","query":{"match_phrase":{"entitlement.categoryStatus":"Valid"}}}}]}}}'
+```
+
+Multiple conditions inside a single `nested` block must all match the **same**
+nested object (they are combined into a `bool`/`must`):
+
+```ruby
+q.must.nested('entitlement') do |n|
+  n.match_phrase('entitlement.categoryCode', 'C').
+    match_phrase('entitlement.categoryStatus', 'Valid')
+end
+```
+
+To require (or exclude) several independent nested objects, chain separate
+`nested` clauses. For example, to exclude records that have any of several
+category codes:
+
+```ruby
+q.must_not.
+  nested('entitlement') { |n| n.match_phrase('entitlement.categoryCode', 'C') }.
+  nested('entitlement') { |n| n.match_phrase('entitlement.categoryCode', 'D') }
+```
+
+The optional OpenSearch parameters `score_mode`, `ignore_unmapped` and
+`inner_hits` may be passed as keyword arguments:
+
+```ruby
+q.must.nested('entitlement', score_mode: 'max', ignore_unmapped: true) do |n|
+  n.match_phrase('entitlement.categoryStatus', 'Valid')
+end
+```
+
 ## Code of Conduct
 
 Everyone interacting in the Dvla::Kaping project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](./CODE_OF_CONDUCT.md).
